@@ -1,4 +1,3 @@
-module Main where
 -- You can use this file to test your functions: `cabal run` executes main.
 -- For example, if main is set to mainDateTime or mainCalendar:
 -- echo "19970610T172345Z" | cabal run
@@ -8,6 +7,7 @@ module Main where
 
 
 
+module Main where
 import DateTime
 import Calendar
 import Features
@@ -33,7 +33,7 @@ main = do
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processInput)
   where
-    processInput = map (run parseDateTime) . lines
+    processInput input = map (run parseDateTime) (lines input)
     -- processCheck = map (maybe SyntaxError (\x -> if checkDateTime x then Valid x else Invalid x))
     printOutput  = unlines . map show
 
