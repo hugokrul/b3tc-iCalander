@@ -29,15 +29,26 @@ newtype Second = Second { runSecond :: Int } deriving (Eq, Ord)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = undefined
+parseDateTime = parseDate <*> symbol 'T' <*> parseTime -- parse utc ????
 
 parseDate :: Parser Char Date
+parseDate = parseYear <*> parseMonth <*> parseDay
+
+-- [0..3]
 parseYear :: Parser Char Year
+parseYear = parse <$> integer <*> statisfy (index /= 3)
+-- [4..5]
 parseMonth :: Parser Char Month
+-- [6..7]
 parserDay :: Parser Char Day
+-- after T
 parseTime :: Parser Char Time
+parseTime = parseHour <*> parseMinute <*> parseSecond
+-- [0..1]
 parseHour :: Parser Char Hour
+-- [2..3]
 parseMinute :: Parser Char Minute
+-- [4..5]
 parseSecond :: Parser Char Second
 
 -- Exercise 2
