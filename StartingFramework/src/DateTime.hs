@@ -29,7 +29,7 @@ newtype Second = Second { runSecond :: Int } deriving (Eq, Ord)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = DateTime <$> parseDate <*> parseTime <*> parseUTC
+parseDateTime = DateTime <$> parseDate <*> symbol 'T' <*> parseTime <*> parseUTC
 
 parseUTC :: Parser Char Bool
 parseUTC = undefined
@@ -38,24 +38,27 @@ parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
 
 parseYear :: Parser Char Year
-parseYear = undefined
-
+parseYear = parse <$> integer <*> statisfy (index /= 3)
+-- [4..5]
 parseMonth :: Parser Char Month
+-- [6..7]
 parseMonth = undefined
 
 parseDay :: Parser Char Day
 parseDay = undefined
-
 -- something like a parseInt to convert from int to day
 
+-- after T
 parseTime :: Parser Char Time
 parseTime = Time <$> parseHour <*> parseMinute <*> parseSecond
-
+-- [0..1]
 parseHour :: Parser Char Hour
 parseHour = undefined
+-- [2..3]
 
 parseMinute :: Parser Char Minute
 parseMinute = undefined
+-- [4..5]
 
 parseSecond :: Parser Char Second
 parseSecond = undefined
