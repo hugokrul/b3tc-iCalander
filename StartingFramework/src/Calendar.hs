@@ -5,10 +5,44 @@ import DateTime
 
 
 -- Exercise 6
-data Calendar = Calendar
+data Calendar = Calendar { runCalProp :: CalProp
+                         , runEvent :: Event }
     deriving (Eq, Ord, Show)
 
-data Event = Event
+data CalProp = ProdId ProdId | Version Version
+    deriving (Eq, Ord, Show)
+
+data ProdId = ProdId { text :: String }
+    deriving (Eq, Ord, Show)
+
+data Version = Version { versionNumber :: Float}
+    deriving (Eq, Ord, Show)
+
+data Event = Event { runEvent :: EventProp }
+    deriving (Eq, Ord, Show)
+
+data EventProp = dtstamp DtStamp | uid Uid | dtstart DtStart | dtend DtEnd | description Description | summary Summary | location Location
+    deriving (Eq, Ord, Show)
+
+data DtStamp = DtStamp { runDtStamp :: DateTime }
+    deriving (Eq, Ord, Show)
+
+data Uid = Uid { text :: String }
+    deriving (Eq, Ord, Show)
+
+data DtStart = DtStart { runDtStart :: DateTime }
+    deriving (Eq, Ord, Show)
+
+data DtEnd = DtEnd { runDtEnd :: DateTime }
+    deriving (Eq, Ord, Show)
+
+data Description = Description { text :: String }
+    deriving (Eq, Ord, Show)
+
+data Summary = Summary { text :: String }
+    deriving (Eq, Ord, Show)
+
+data Location = Location {Text :: String}
     deriving (Eq, Ord, Show)
 
 -- Exercise 7
