@@ -125,12 +125,12 @@ run parser input = case parse parser input of
 printDateTime :: DateTime -> String
 printDateTime (DateTime (Date (Year year) (Month month) (Day day)) (Time (Hour hour) (Minute minute) (Second second)) utc)
     =
-        (\x -> replicate (4-length x) '0' ++ x) (show year) ++ "/" ++ 
-        (\x -> replicate (2-length x) '0' ++ x) (show month) ++ "/" ++ 
+        (\x -> replicate (4-length x) '0' ++ x) (show year) ++
+        (\x -> replicate (2-length x) '0' ++ x) (show month) ++
         (\x -> replicate (2-length x) '0' ++ x) (show day) ++ 
         "T" ++ 
-        (\x -> replicate (2-length x) '0' ++ x) (show hour) ++ ":" ++ 
-        (\x -> replicate (2-length x) '0' ++ x) (show minute) ++ ":" ++ 
+        (\x -> replicate (2-length x) '0' ++ x) (show hour) ++
+        (\x -> replicate (2-length x) '0' ++ x) (show minute) ++
         (\x -> replicate (2-length x) '0' ++ x) (show second) ++ 
         if utc then "Z" else ""
 
