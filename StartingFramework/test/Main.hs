@@ -26,7 +26,7 @@ instance Show Result where
     show (Valid x)   = "valid date: " ++ show x
 
 testDate :: DateTime
-testDate = DateTime (Date (Year 2023) (Month 1) (Day 1)) (Time (Hour 23) (Minute 59) (Second 59)) True
+testDate = DateTime (Date (Year 2023) (Month 2) (Day 30)) (Time (Hour 23) (Minute 59) (Second 59)) True
 
 
 main :: IO ()
@@ -35,10 +35,10 @@ main = do
   mainDateTime
 
 mainDateTime :: IO ()
-mainDateTime = interact (printOutput . processInput)
+mainDateTime = interact (printOutput . processCheck . processInput)
   where
     processInput input = map (run parseDateTime) (lines input)
-    -- processCheck = map (maybe SyntaxError (\x -> if checkDateTime x then Valid x else Invalid x))
+    processCheck = map (maybe SyntaxError (\x -> if checkDateTime x then Valid x else Invalid x))
     printOutput  = unlines . map show
 
 mainCalendar :: IO ()

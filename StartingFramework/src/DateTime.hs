@@ -7,6 +7,8 @@ import Debug.Trace
 import Data.Char (isDigit)
 import Text.Printf (printf)
 import Data.Maybe (fromMaybe)
+import Data.Time.Calendar.MonthDay (monthLength, MonthOfYear)
+import Data.Time.Calendar (isLeapYear)
 
 -- | "Target" datatype for the DateTime parser, i.e, the parser should produce elements of this type.
 data DateTime = DateTime { date :: Date
@@ -62,10 +64,7 @@ parseMonth :: Parser Char Month
 parseMonth = let takeMonth str = take 2 $ drop 4 str in
     look >>= \input ->
     case takeMonth input of
-        ls | checkMaximum ls 12 && lsInt >= 1 -> pure $ Month $ read $ takeMonth input
-            where
-                lsInt :: Int
-                lsInt = read ls
+        ls | checkAllDigits ls -> pure $ Month $ read $ takeMonth input
         _ -> empty
 
 -- parseDay looks only at the digits on index [6..7] and converts that to Day
@@ -73,10 +72,7 @@ parseDay :: Parser Char Day
 parseDay = let takeDay str = take 2 $ drop 6 str in
     look >>= \input ->
     case takeDay input of
-        ls | checkMaximum ls 31 && lsInt >= 1 -> pure $ Day $ read $ takeDay input
-            where
-                lsInt ::Int
-                lsInt = read ls
+        ls | checkAllDigits ls -> pure $ Day $ read $ takeDay input
         _ -> empty
 
 parseTime :: Parser Char Time
@@ -93,7 +89,7 @@ parseHour :: Parser Char Hour
 parseHour = let takeHour str = take 2 $ drop 9 str in
     look >>= \input ->
     case takeHour input of
-        ls | checkMaximum ls 24 -> pure $ Hour $ read $ takeHour input
+        ls | checkAllDigits ls -> pure $ Hour $ read $ takeHour input
         _ -> empty
 
 -- looks at the second 2 digits after T ([11.12]) and converts that to Minute
@@ -101,7 +97,7 @@ parseMinute :: Parser Char Minute
 parseMinute = let takeMinute str = take 2 $ drop 11 str in
     look >>= \input ->
     case takeMinute input of
-        ls | checkMaximum ls 60 -> pure $ Minute $ read $ takeMinute input
+        ls | checkAllDigits ls -> pure $ Minute $ read $ takeMinute input
         _ -> empty
 
 -- looks at the third 2 digits after T ([13.14]) and converts that to Second
@@ -109,7 +105,7 @@ parseSecond :: Parser Char Second
 parseSecond = let takeSecond str = take 2 $ drop 13 str in
     look >>= \input ->
     case takeSecond input of
-        ls | checkMaximum ls 60 -> pure $ Second $ read $ takeSecond input
+        ls | checkAllDigits ls -> pure $ Second $ read $ takeSecond input
         _ -> empty
 
 -- Exercise 2
@@ -140,4 +136,11 @@ parsePrint s = printDateTime <$> run parseDateTime s
 
 -- Exercise 5
 checkDateTime :: DateTime -> Bool
-checkDateTime = undefined
+checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Time (Hour hour) (Minute minute) (Second second)) utc) = 
+    if isLeapYear $ toInteger yearInt
+        then
+            dayInt <= monthLength True monthInt && monthInt > 0 && monthInt <= 12 && dayInt > 0 &&
+            hour < 24 && minute < 60 && second < 60
+        else
+            dayInt <= monthLength False monthInt && monthInt > 0 && monthInt <= 12 && dayInt > 0 &&
+            hour < 24 && minute < 60 && second < 60
