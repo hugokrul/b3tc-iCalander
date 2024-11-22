@@ -8,7 +8,8 @@ import Data.Char (isDigit)
 import Text.Printf (printf)
 import Data.Maybe (fromMaybe)
 import Data.Time.Calendar.MonthDay (monthLength, MonthOfYear)
-import Data.Time.Calendar (isLeapYear)
+import qualified Data.Time.Calendar as Cal
+import qualified Data.Time as Cal
 
 -- | "Target" datatype for the DateTime parser, i.e, the parser should produce elements of this type.
 data DateTime = DateTime { date :: Date
@@ -123,11 +124,11 @@ printDateTime (DateTime (Date (Year year) (Month month) (Day day)) (Time (Hour h
     =
         (\x -> replicate (4-length x) '0' ++ x) (show year) ++
         (\x -> replicate (2-length x) '0' ++ x) (show month) ++
-        (\x -> replicate (2-length x) '0' ++ x) (show day) ++ 
-        "T" ++ 
+        (\x -> replicate (2-length x) '0' ++ x) (show day) ++
+        "T" ++
         (\x -> replicate (2-length x) '0' ++ x) (show hour) ++
         (\x -> replicate (2-length x) '0' ++ x) (show minute) ++
-        (\x -> replicate (2-length x) '0' ++ x) (show second) ++ 
+        (\x -> replicate (2-length x) '0' ++ x) (show second) ++
         if utc then "Z" else ""
 
 -- Exercise 4
@@ -136,11 +137,34 @@ parsePrint s = printDateTime <$> run parseDateTime s
 
 -- Exercise 5
 checkDateTime :: DateTime -> Bool
-checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Time (Hour hour) (Minute minute) (Second second)) utc) = 
-    if isLeapYear $ toInteger yearInt
+checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Time (Hour hour) (Minute minute) (Second second)) utc) =
+    if Cal.isLeapYear $ toInteger yearInt
         then
             dayInt <= monthLength True monthInt && monthInt > 0 && monthInt <= 12 && dayInt > 0 &&
             hour < 24 && minute < 60 && second < 60
         else
             dayInt <= monthLength False monthInt && monthInt > 0 && monthInt <= 12 && dayInt > 0 &&
             hour < 24 && minute < 60 && second < 60
+
+-- Functions for the Calendar
+overlapping :: (DateTime, DateTime) -> (DateTime, DateTime) -> Bool
+overlapping (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11, DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) (DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21, DateTime (Date (Year year22) (Month month22) (Day day22)) (Time (Hour hour22) (Minute minute22) (Second second22)) utc22) =
+    overlappingDays
+    where
+        day1Start :: Cal.Day
+        day1Start = Cal.fromGregorian (toInteger year11) month11 day11
+
+        day1End :: Cal.Day
+        day1End = Cal.fromGregorian (toInteger year12) month12 day12 
+
+        day2Start :: Cal.Day
+        day2Start = Cal.fromGregorian (toInteger year21) month21 day21
+
+        day2End :: Cal.Day
+        day2End = Cal.fromGregorian (toInteger year22) month22 day22
+
+        overlappingDays :: Bool
+        overlappingDays = Cal.diffDays day1End day2Start < 0
+
+        overlappingTime :: Bool
+        overlappingTime = if hour12 == hour21 then (if minute12 == minute21 then second21 < second12 else minute21 < minute12) else hour21 < hour12

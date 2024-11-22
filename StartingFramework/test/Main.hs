@@ -5,6 +5,7 @@
 -- Feel free to use ghci instead, or to change functions here to test whatever you want.
 -- We'll ignore anything in this file when grading!
 
+-- This code is written by Hugo Krul en Tijmen Vis
 
 
 module Main where
@@ -32,7 +33,7 @@ testDate = DateTime (Date (Year 2023) (Month 2) (Day 30)) (Time (Hour 23) (Minut
 main :: IO ()
 main = do
   setNewlineTranslations
-  mainDateTime
+  mainDCalendar
 
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processCheck . processInput)
