@@ -25,6 +25,10 @@ instance Show Result where
     show (Invalid _) = "good syntax, but invalid date or time values"
     show (Valid x)   = "valid date: " ++ show x
 
+testDate :: DateTime
+testDate = DateTime (Date (Year 2023) (Month 1) (Day 1)) (Time (Hour 23) (Minute 59) (Second 59)) True
+
+
 main :: IO ()
 main = do
   setNewlineTranslations
