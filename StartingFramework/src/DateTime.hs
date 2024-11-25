@@ -147,24 +147,24 @@ checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Tim
             hour < 24 && minute < 60 && second < 60
 
 -- Functions for the Calendar
-overlapping :: (DateTime, DateTime) -> (DateTime, DateTime) -> Bool
-overlapping (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11, DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) (DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21, DateTime (Date (Year year22) (Month month22) (Day day22)) (Time (Hour hour22) (Minute minute22) (Second second22)) utc22) =
-    overlappingDays
+overlappingDates :: (DateTime, DateTime) -> (DateTime, DateTime) -> Bool
+overlappingDates 
+    (   DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11, 
+        DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) 
+
+    (   DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21, 
+        DateTime (Date (Year year22) (Month month22) (Day day22)) (Time (Hour hour22) (Minute minute22) (Second second22)) utc22)
+    | overlappingDays = True
+    | sameDays = overlappingTime
+    | otherwise = False
     where
-        day1Start :: Cal.Day
-        day1Start = Cal.fromGregorian (toInteger year11) month11 day11
-
         day1End :: Cal.Day
-        day1End = Cal.fromGregorian (toInteger year12) month12 day12 
-
+        day1End = Cal.fromGregorian (toInteger year12) month12 day12
         day2Start :: Cal.Day
         day2Start = Cal.fromGregorian (toInteger year21) month21 day21
-
-        day2End :: Cal.Day
-        day2End = Cal.fromGregorian (toInteger year22) month22 day22
-
         overlappingDays :: Bool
-        overlappingDays = Cal.diffDays day1End day2Start < 0
-
+        overlappingDays = Cal.diffDays day2Start day1End < 0
+        sameDays :: Bool
+        sameDays = Cal.diffDays day1End day2Start == 0
         overlappingTime :: Bool
         overlappingTime = if hour12 == hour21 then (if minute12 == minute21 then second21 < second12 else minute21 < minute12) else hour21 < hour12

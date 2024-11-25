@@ -26,14 +26,20 @@ instance Show Result where
     show (Invalid _) = "good syntax, but invalid date or time values"
     show (Valid x)   = "valid date: " ++ show x
 
-testDate :: DateTime
-testDate = DateTime (Date (Year 2023) (Month 2) (Day 30)) (Time (Hour 23) (Minute 59) (Second 59)) True
+testDate1Start :: DateTime
+testDate1Start = DateTime (Date (Year 2024) (Month 2) (Day 20)) (Time (Hour 23) (Minute 59) (Second 59)) True
+testDate1Finish :: DateTime
+testDate1Finish = DateTime (Date (Year 2024) (Month 2) (Day 22)) (Time (Hour 23) (Minute 59) (Second 59)) True
 
+testDate2Start :: DateTime
+testDate2Start = DateTime (Date (Year 2024) (Month 2) (Day 22)) (Time (Hour 23) (Minute 59) (Second 59)) True
+testDate2Finish :: DateTime
+testDate2Finish = DateTime (Date (Year 2024) (Month 2) (Day 24)) (Time (Hour 23) (Minute 59) (Second 59)) True
 
 main :: IO ()
 main = do
   setNewlineTranslations
-  mainDCalendar
+  mainDateTime
 
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processCheck . processInput)
