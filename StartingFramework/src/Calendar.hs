@@ -11,42 +11,42 @@ data Calendar = Calendar
                         --  , runEvent :: [Event] }
     deriving (Eq, Ord, Show)
 
--- data CalProp = ProdId ProdId | Version Version
---     deriving (Eq, Ord, Show)
-
--- data ProdId = ProdId { text :: String }
---     deriving (Eq, Ord, Show)
-
--- data Version = Version { versionNumber :: Float}
---     deriving (Eq, Ord, Show)
-
-data Event = Event 
-    -- { runEvent :: EventProp }
+data CalProp = Prodid ProdId | VersionNumber Version
     deriving (Eq, Ord, Show)
 
--- data EventProp = DtStamp DtStamp | Uid Uid | DtStart DtStart | DtEnd DtEnd | Description Description | Summary Summary | Location Location
---     deriving (Eq, Ord, Show)
+newtype ProdId = ProdId { runProdId :: String }
+    deriving (Eq, Ord, Show)
 
--- data DtStamp = DtStamp { runDtStamp :: DateTime }
---     deriving (Eq, Ord, Show)
+newtype Version = Version { versionNumber :: Float}
+    deriving (Eq, Ord, Show)
 
--- data Uid = Uid { text :: String }
---     deriving (Eq, Ord, Show)
+newtype Event = Event 
+    { runEvent :: EventProp }
+    deriving (Eq, Ord, Show)
 
--- data DtStart = DtStart { runDtStart :: DateTime }
---     deriving (Eq, Ord, Show)
+data EventProp = Dtstamp DtStamp | EventUid Uid | Dtstart DtStart | Dtend DtEnd | EventDescription Description | EventSummary Summary | EventLocation Location
+    deriving (Eq, Ord, Show)
 
--- data DtEnd = DtEnd { runDtEnd :: DateTime }
---     deriving (Eq, Ord, Show)
+newtype DtStamp = DtStamp { runDtStamp :: DateTime }
+    deriving (Eq, Ord, Show)
 
--- data Description = Description { text :: String }
---     deriving (Eq, Ord, Show)
+newtype Uid = Uid { runUid :: String }
+    deriving (Eq, Ord, Show)
 
--- data Summary = Summary { text :: String }
---     deriving (Eq, Ord, Show)
+newtype DtStart = DtStart { runDtStart :: DateTime }
+    deriving (Eq, Ord, Show)
 
--- data Location = Location { text :: String}
---     deriving (Eq, Ord, Show)
+newtype DtEnd = DtEnd { runDtEnd :: DateTime }
+    deriving (Eq, Ord, Show)
+
+newtype Description = Description { runDescription :: String }
+    deriving (Eq, Ord, Show)
+
+newtype Summary = Summary { runSummary :: String }
+    deriving (Eq, Ord, Show)
+
+newtype Location = Location { runLocation :: String}
+    deriving (Eq, Ord, Show)
 
 -- Exercise 7
 data Token = Token

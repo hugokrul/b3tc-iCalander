@@ -17,6 +17,9 @@ data DateTime = DateTime { date :: Date
                          , utc  :: Bool }
     deriving (Eq, Ord)
 
+instance Show DateTime where
+    show = printDateTime
+
 data Date = Date { year  :: Year
                  , month :: Month
                  , day   :: Day }
