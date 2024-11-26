@@ -24,7 +24,8 @@ library
                        base >=4.14,
                        containers,
                        uu-tc == 2024.1.1,
-                       time
+                       time,
+                       split
 
   hs-source-dirs:      src
 
