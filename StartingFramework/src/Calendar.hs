@@ -2,29 +2,40 @@ module Calendar where
 
 import ParseLib
 import DateTime
+import Debug.Trace
+
 
 -- We chose to make every item in the gramar its own data type
 -- We would rather filter for non-correct calendars then to parse the callenders
 -- Exercise 6
 data Calendar = Calendar 
-                        -- { runCalProp :: CalProp
-                        --  , runEvent :: [Event] }
+                        { runCalendarBegin :: Begin
+                        , runCalProdId :: ProdId
+                        , runCalVersion :: Version
+                        , runCalEvent :: [Event]
+                        , runCalendarEnd :: End }
     deriving (Eq, Ord, Show)
 
-data CalProp = Prodid ProdId | VersionNumber Version
+newtype Begin = Begin { runBegin :: String }
+    deriving (Eq, Ord, Show)
+newtype End = End { runEnd :: String }
     deriving (Eq, Ord, Show)
 
 newtype ProdId = ProdId { runProdId :: String }
     deriving (Eq, Ord, Show)
 
-newtype Version = Version { versionNumber :: Float}
+newtype Version = Version { runVersionNumber :: Float}
     deriving (Eq, Ord, Show)
 
-newtype Event = Event 
-    { runEvent :: EventProp }
-    deriving (Eq, Ord, Show)
-
-data EventProp = Dtstamp DtStamp | EventUid Uid | Dtstart DtStart | Dtend DtEnd | EventDescription Description | EventSummary Summary | EventLocation Location
+data Event = Event  { runEventBegin :: Begin
+                    , runEventDtStamp :: DtStamp
+                    , runEventUid :: Uid
+                    , runEventDtStart :: DtStart
+                    , runEventDtEnd :: DtEnd
+                    , runEventDescription :: Maybe Description
+                    , runEventSummary :: Maybe Summary
+                    , runEventLocation :: Maybe Location
+                    , runEventEnd :: End }
     deriving (Eq, Ord, Show)
 
 newtype DtStamp = DtStamp { runDtStamp :: DateTime }
@@ -48,32 +59,40 @@ newtype Summary = Summary { runSummary :: String }
 newtype Location = Location { runLocation :: String}
     deriving (Eq, Ord, Show)
 
--- Exercise 7
-data Token = Token
+data StartTokens = BeginToken Begin | EndToken End | ProdIdToken ProdId | VersionToken Version | DtStampToken DtStamp | Uidtoken Uid
+                                    | DtStartToken DtStart | DtEndToken DtEnd | DescriptionToken Description | SummaryToken Summary 
+                                    | LocationToken Location
     deriving (Eq, Ord, Show)
 
+-- Exercise 7
+newtype Token = Token { runToken :: StartTokens }
+    deriving (Eq, Ord, Show)
+
+-- sequence $ replicate 4 anySymbol
+
+consumeLine :: Parser Char [Char]
+consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n'))
+
+consumeR :: Parser Char [Char]
+consumeR = greedy (satisfy (/= '\r'))
+
 lexCalendar :: Parser Char [Token]
-lexCalendar = undefined
+lexCalendar = do
+    x <- listOf consumeLine (symbol '\n') 
+    return $ makeTokens x
+
+makeTokens :: [[Char]] -> [Token]
+makeTokens (x:xs) = do
+    [Token (BeginToken (Begin "test"))]
+
+    
 
 parseCalendar :: Parser Token Calendar
-parseCalendar = undefined
+parseCalendar = look >>= \input -> succeed (Calendar (Begin "VCALENDAR") (ProdId "-//hacksw/handcal//NONSGML v1.0//EN") (Version 2.0) [] (End "VCALENDAR"))
 
 recognizeCalendar :: String -> Maybe Calendar
-recognizeCalendar s = run lexCalendar s >>= run parseCalendar
+recognizeCalendar s = run lexCalendar s >>= \input -> run parseCalendar input
 
 -- Exercise 8
 printCalendar :: Calendar -> String
 printCalendar = undefined
-
--- Excercise 9
-countEvents :: Calendar -> Int
-countEvents = undefined
-
-findEvents :: Calendar -> Calendar -> [Event]
-findEvents = undefined
-
-checkOverlapping :: Calendar -> Bool
-checkOverlapping = undefined
-
-timeSpent :: String -> Calendar -> Int
-timeSpent = undefined

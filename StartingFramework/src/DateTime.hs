@@ -11,6 +11,13 @@ import Data.Time.Calendar.MonthDay (monthLength, MonthOfYear)
 import qualified Data.Time.Calendar as Cal
 import qualified Data.Time as Cal
 
+-- class DateTimes a where
+--     consumeParse :: Int -> (Int -> a) -> Parser Char a  
+--     consumeParse i aa = consume i >>= \input -> 
+--         case input of 
+--             ls | checkAllDigits ls -> pure $ aa $ read input
+--             _ -> empty
+
 -- | "Target" datatype for the DateTime parser, i.e, the parser should produce elements of this type.
 data DateTime = DateTime { date :: Date
                          , time :: Time
@@ -44,6 +51,13 @@ checkAllDigits = all isDigit
 consume :: Int -> Parser Char [Char]
 consume n = replicateM n anySymbol
 
+consumeParse :: Int -> (Int -> a) -> Parser Char a
+consumeParse i parser = do 
+    let checkInput input = case input of
+            ls | checkAllDigits ls -> pure $ parser $ read input
+            _ -> empty
+    consume i >>= checkInput
+
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
 parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUTC
@@ -55,67 +69,36 @@ parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
 
 parseYear :: Parser Char Year
-parseYear = consume 4 >>= \input ->
-    -- Looks at the first 4 digits and converts that to year
-    case input of
-        ls | checkAllDigits ls -> pure $ Year $ read input
-        _ -> empty  -- Fail for invalid input
+parseYear = consumeParse 4 Year
 
--- parseMonth looks only at the digits on index [4..5] and converts that to Month
 parseMonth :: Parser Char Month
-parseMonth =
-    consume 2 >>= \input ->
-    case input of
-        ls | checkAllDigits ls -> pure $ Month $ read input
-        _ -> empty
+parseMonth = consumeParse 2 Month
 
--- parseDay looks only at the digits on index [6..7] and converts that to Day
 parseDay :: Parser Char Day
-parseDay =
-    consume 2 >>= \input ->
-    case input of
-        ls | checkAllDigits ls -> pure $ Day $ read input
-        _ -> empty
+parseDay = consumeParse 2 Day
 
 parseTime :: Parser Char Time
 parseTime = Time <$> parseHour <*> parseMinute <*> parseSecond
 
--- checks if the number is bigger then a maximum number given
-checkMaximum :: String -> Int -> Bool
-checkMaximum input maximum = checkAllDigits input && checkMaximumDayCount
-    where
-        checkMaximumDayCount = input <= show maximum
-
--- looks at the first 2 digits after T ([9..10]) and converts that to Hour
 parseHour :: Parser Char Hour
-parseHour = consume 2 >>= \input ->
-    case input of
-        ls | checkAllDigits ls -> pure $ Hour $ read input
-        _ -> empty
+parseHour = consumeParse 2 Hour
 
--- looks at the second 2 digits after T ([11.12]) and converts that to Minute
 parseMinute :: Parser Char Minute
-parseMinute =
-    consume 2 >>= \input ->
-    case input of
-        ls | checkAllDigits ls -> pure $ Minute $ read input
-        _ -> empty
+parseMinute = consumeParse 2 Minute
 
--- looks at the third 2 digits after T ([13.14]) and converts that to Second
 parseSecond :: Parser Char Second
-parseSecond = consume 2 >>= \input ->
-    case input of
-        ls | checkAllDigits ls -> pure $ Second $ read input
-        _ -> empty
+parseSecond = consumeParse 2 Second
 
 -- Exercise 2
-run :: Parser a b -> [a] -> Maybe b
+run :: (Show a, Show b) => Parser a b -> [a] -> Maybe b
 -- parse :: Parser s a -> [s] -> [(a, [s])]
 -- parse :: Parser String DateTime -> String -> [(DateTime, String)]
-run parser [] = Nothing
-run parser input = case parse parser input of
-    [(result, empty)] -> Just result
-    _ -> Nothing
+run parser input =
+    case parse parser input of
+        [] -> Nothing
+        [(result, rest)] -> Just result
+        _:[(_, xs)] -> run parser xs
+        _ -> Nothing
 
 -- Exercise 3
 printDateTime :: DateTime -> String

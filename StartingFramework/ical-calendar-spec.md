@@ -35,3 +35,4 @@ No extra whitespace is allowed anywhere in an event.
 In the calendar header, both `prodid` and `version` are required and must appear exactly once.
 
 `description`, `summary` and `location` are optional but must not appear more than once.
+All other event properties (dtstamp, uid, dtstart, dtend) have to appear exactly once per event

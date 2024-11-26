@@ -36,7 +36,7 @@ testDate2Finish = DateTime (Date (Year 2024) (Month 2) (Day 24)) (Time (Hour 23)
 main :: IO ()
 main = do
   setNewlineTranslations
-  mainDateTime
+  mainCalendar
 
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processCheck . processInput)
