@@ -41,42 +41,40 @@ newtype Second = Second { runSecond :: Int } deriving (Eq, Ord)
 checkAllDigits :: String -> Bool
 checkAllDigits = all isDigit
 
+consume :: Int -> Parser Char [Char]
+consume n = replicateM n anySymbol
+
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = DateTime <$> parseDate <*> parseTime <*> parseUTC
+parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUTC
 
 parseUTC :: Parser Char Bool
-parseUTC = look >>= \input ->
-    -- looks at all the last symbol
-    -- if that is a Z it is in UTC
-    -- if no last symbol is given, it is not UTC
-    case drop 15 input of
-        (x:xs) -> if x == 'Z' then pure True else pure False
+parseUTC = consume 1 >>= \ls -> if ls == "Z" then return True else return False
 
 parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
 
 parseYear :: Parser Char Year
-parseYear = look >>= \input ->
+parseYear = consume 4 >>= \input ->
     -- Looks at the first 4 digits and converts that to year
-    case take 4 input of
-        ls | checkAllDigits ls -> pure $ Year $ read $ take 4 input
+    case input of
+        ls | checkAllDigits ls -> pure $ Year $ read input
         _ -> empty  -- Fail for invalid input
 
 -- parseMonth looks only at the digits on index [4..5] and converts that to Month
 parseMonth :: Parser Char Month
-parseMonth = let takeMonth str = take 2 $ drop 4 str in
-    look >>= \input ->
-    case takeMonth input of
-        ls | checkAllDigits ls -> pure $ Month $ read $ takeMonth input
+parseMonth =
+    consume 2 >>= \input ->
+    case input of
+        ls | checkAllDigits ls -> pure $ Month $ read input
         _ -> empty
 
 -- parseDay looks only at the digits on index [6..7] and converts that to Day
 parseDay :: Parser Char Day
-parseDay = let takeDay str = take 2 $ drop 6 str in
-    look >>= \input ->
-    case takeDay input of
-        ls | checkAllDigits ls -> pure $ Day $ read $ takeDay input
+parseDay =
+    consume 2 >>= \input ->
+    case input of
+        ls | checkAllDigits ls -> pure $ Day $ read input
         _ -> empty
 
 parseTime :: Parser Char Time
@@ -90,26 +88,24 @@ checkMaximum input maximum = checkAllDigits input && checkMaximumDayCount
 
 -- looks at the first 2 digits after T ([9..10]) and converts that to Hour
 parseHour :: Parser Char Hour
-parseHour = let takeHour str = take 2 $ drop 9 str in
-    look >>= \input ->
-    case takeHour input of
-        ls | checkAllDigits ls -> pure $ Hour $ read $ takeHour input
+parseHour = consume 2 >>= \input ->
+    case input of
+        ls | checkAllDigits ls -> pure $ Hour $ read input
         _ -> empty
 
 -- looks at the second 2 digits after T ([11.12]) and converts that to Minute
 parseMinute :: Parser Char Minute
-parseMinute = let takeMinute str = take 2 $ drop 11 str in
-    look >>= \input ->
-    case takeMinute input of
-        ls | checkAllDigits ls -> pure $ Minute $ read $ takeMinute input
+parseMinute =
+    consume 2 >>= \input ->
+    case input of
+        ls | checkAllDigits ls -> pure $ Minute $ read input
         _ -> empty
 
 -- looks at the third 2 digits after T ([13.14]) and converts that to Second
 parseSecond :: Parser Char Second
-parseSecond = let takeSecond str = take 2 $ drop 13 str in
-    look >>= \input ->
-    case takeSecond input of
-        ls | checkAllDigits ls -> pure $ Second $ read $ takeSecond input
+parseSecond = consume 2 >>= \input ->
+    case input of
+        ls | checkAllDigits ls -> pure $ Second $ read input
         _ -> empty
 
 -- Exercise 2
@@ -151,11 +147,11 @@ checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Tim
 
 -- Functions for the Calendar
 overlappingDates :: (DateTime, DateTime) -> (DateTime, DateTime) -> Bool
-overlappingDates 
-    (   DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11, 
-        DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) 
+overlappingDates
+    (   DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11,
+        DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12)
 
-    (   DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21, 
+    (   DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21,
         DateTime (Date (Year year22) (Month month22) (Day day22)) (Time (Hour hour22) (Minute minute22) (Second second22)) utc22)
     | overlappingDays = True
     | sameDays = overlappingTime
