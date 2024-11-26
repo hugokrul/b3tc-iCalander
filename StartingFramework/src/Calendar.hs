@@ -4,6 +4,8 @@ import ParseLib
 import DateTime
 import Debug.Trace
 
+import Data.List
+
 
 -- We chose to make every item in the gramar its own data type
 -- We would rather filter for non-correct calendars then to parse the callenders
@@ -73,25 +75,21 @@ newtype Token = Token { runToken :: StartTokens }
 consumeLine :: Parser Char [Char]
 consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n'))
 
-consumeR :: Parser Char [Char]
-consumeR = greedy (satisfy (/= '\r'))
+consumeColon :: Parser Char [Char]
+consumeColon = greedy (satisfy (/= ':')) >>= \input -> return input
 
 lexCalendar :: Parser Char [Token]
 lexCalendar = do
-    x <- listOf consumeLine (symbol '\n') 
-    return $ makeTokens x
-
-makeTokens :: [[Char]] -> [Token]
-makeTokens (x:xs) = do
-    [Token (BeginToken (Begin "test"))]
-
-    
+    x <- listOf consumeLine (symbol '\n')
+    -- placeholder, this should convert the list to tokens
+    return [Token (BeginToken (Begin "test"))]
 
 parseCalendar :: Parser Token Calendar
+-- placeholder, this should put the tokens in the calendar datastructure
 parseCalendar = look >>= \input -> succeed (Calendar (Begin "VCALENDAR") (ProdId "-//hacksw/handcal//NONSGML v1.0//EN") (Version 2.0) [] (End "VCALENDAR"))
 
 recognizeCalendar :: String -> Maybe Calendar
-recognizeCalendar s = run lexCalendar s >>= \input -> run parseCalendar input
+recognizeCalendar s = run lexCalendar s >>= run parseCalendar 
 
 -- Exercise 8
 printCalendar :: Calendar -> String
