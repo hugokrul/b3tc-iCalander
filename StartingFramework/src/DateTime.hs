@@ -52,7 +52,7 @@ consume :: Int -> Parser Char [Char]
 consume n = replicateM n anySymbol
 
 consumeParse :: Int -> (Int -> a) -> Parser Char a
-consumeParse i parser = do 
+consumeParse i parser = do
     let checkInput input = case input of
             ls | checkAllDigits ls -> pure $ parser $ read input
             _ -> empty
@@ -150,3 +150,20 @@ overlappingDates
         sameDays = Cal.diffDays day1End day2Start == 0
         overlappingTime :: Bool
         overlappingTime = if hour12 == hour21 then (if minute12 == minute21 then second21 < second12 else minute21 < minute12) else hour21 < hour12
+
+
+countMinutes :: DateTime -> DateTime -> Int
+countMinutes (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour1) (Minute minute1) (Second second1)) utc11)
+    (DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour2) (Minute minute2) (Second second2)) utc12)  = minutes
+    where
+        day1 :: Cal.Day
+        day1 = Cal.fromGregorian (toInteger year11) month11 day11
+
+        day2 :: Cal.Day
+        day2 = Cal.fromGregorian (toInteger year12) month12 day12
+
+        differentDays :: Integer
+        differentDays = Cal.diffDays day1 day2
+
+        minutes :: Int
+        minutes = 1440 * fromInteger differentDays + (hour2 - hour1) * 60 + (minute2 - minute1)

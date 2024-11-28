@@ -152,6 +152,7 @@ parseVerProd = do
     case input of
         Token (VersionToken (Version string)) -> return $ Vers $ Version string
         Token (ProdIdToken (ProdId string)) -> return $ Prodid $ ProdId string
+        _ -> failp
 
 parseEndCalendar :: Parser Token End
 parseEndCalendar = do
@@ -168,7 +169,7 @@ isEndType (Token (EndToken _)) = True
 isEndType _ = False
 
 parseAllEventTokens :: Parser Token [Token]
-parseAllEventTokens = greedy $ satisfy $ not . isEndType
+parseAllEventTokens = greedy $ satisfy $ not . isEndType 
 
 parseEvent :: Parser Token [Event]
 parseEvent = parseAllEventTokens >>= \input -> trace (show input) $ return []
