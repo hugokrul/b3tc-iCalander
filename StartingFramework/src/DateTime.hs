@@ -129,13 +129,10 @@ checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Tim
             hour < 24 && minute < 60 && second < 60
 
 -- Functions for the Calendar
-overlappingDates :: (DateTime, DateTime) -> (DateTime, DateTime) -> Bool
-overlappingDates
-    (   DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour11) (Minute minute11) (Second second11)) utc11,
-        DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12)
-
-    (   DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21,
-        DateTime (Date (Year year22) (Month month22) (Day day22)) (Time (Hour hour22) (Minute minute22) (Second second22)) utc22)
+overlappingDates :: DateTime -> DateTime -> Bool
+overlappingDates 
+    (DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) 
+    (DateTime (Date (Year year21) (Month month21) (Day day21)) (Time (Hour hour21) (Minute minute21) (Second second21)) utc21)
     | overlappingDays = True
     | sameDays = overlappingTime
     | otherwise = False
@@ -151,7 +148,6 @@ overlappingDates
         overlappingTime :: Bool
         overlappingTime = if hour12 == hour21 then (if minute12 == minute21 then second21 < second12 else minute21 < minute12) else hour21 < hour12
 
-
 countMinutes :: DateTime -> DateTime -> Int
 countMinutes (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour1) (Minute minute1) (Second second1)) utc11)
     (DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour2) (Minute minute2) (Second second2)) utc12)  = minutes
@@ -163,7 +159,7 @@ countMinutes (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (H
         day2 = Cal.fromGregorian (toInteger year12) month12 day12
 
         differentDays :: Integer
-        differentDays = Cal.diffDays day1 day2
+        differentDays = Cal.diffDays day2 day1
 
         minutes :: Int
         minutes = 1440 * fromInteger differentDays + (hour2 - hour1) * 60 + (minute2 - minute1)

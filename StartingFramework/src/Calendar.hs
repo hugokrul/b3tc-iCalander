@@ -75,7 +75,7 @@ newtype Token = Token { runToken :: StartTokens }
     deriving (Eq, Ord, Show)
 
 consumeLine :: Parser Char [Char]
-consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n')) >>= \input -> return input
+consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n')) -- >>= \input -> return input
 
 lexCalendar :: Parser Char [Token]
 lexCalendar = do
