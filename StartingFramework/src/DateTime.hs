@@ -97,8 +97,8 @@ run parser input =
     case parse parser input of
         [] -> Nothing
         [(result, rest)] -> Just result
+        (result, []):xs -> Just result
         (result, t):xs -> run parser t
-        -- trace trace ("(" ++ show result ++ ", " ++ show t ++ ")" ++ " : " ++ show xs) $ 
 
 -- Exercise 3
 printDateTime :: DateTime -> String

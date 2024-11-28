@@ -3,9 +3,9 @@ module Calendar where
 import ParseLib
 import DateTime
 import Debug.Trace
-
 import Data.Maybe
 import Data.List.Split
+import Control.Monad
 
 
 -- We chose to make every item in the gramar its own data type
@@ -13,8 +13,8 @@ import Data.List.Split
 -- Exercise 6
 data Calendar = Calendar 
                         { runCalendarBegin :: Begin
-                        , runCalProdId :: ProdId
-                        , runCalVersion :: Version
+                        , runCalVerProd1 :: VerProd
+                        , runCalVerProd2 :: VerProd
                         , runCalEvent :: [Event]
                         , runCalendarEnd :: End }
     deriving (Eq, Ord, Show)
@@ -22,6 +22,9 @@ data Calendar = Calendar
 newtype Begin = Begin { runBegin :: String }
     deriving (Eq, Ord, Show)
 newtype End = End { runEnd :: String }
+    deriving (Eq, Ord, Show)
+
+data VerProd = Prodid ProdId | Vers Version
     deriving (Eq, Ord, Show)
 
 newtype ProdId = ProdId { runProdId :: String }
@@ -72,17 +75,14 @@ newtype Token = Token { runToken :: StartTokens }
     deriving (Eq, Ord, Show)
 
 consumeLine :: Parser Char [Char]
-consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n'))
-
-consumeColon :: Parser Char [Char]
-consumeColon = greedy (satisfy (/= ':')) >>= \input -> return input
+consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n')) >>= \input -> return input
 
 lexCalendar :: Parser Char [Token]
 lexCalendar = do
     x <- listOf consumeLine (symbol '\n')
     let y = map (splitOn ":") x
     let result = checkToken (splitIntoTwo $ concatenateListsWithSpaces y)
-    trace (show result) $ return result
+    return result
 
 splitIntoTwo :: [[String]] -> [[String]]
 splitIntoTwo = map merge
@@ -129,7 +129,79 @@ checkToken (x:xs) = checkToken xs
 
 parseCalendar :: Parser Token Calendar
 -- placeholder, this should put the tokens in the calendar datastructure
-parseCalendar = look >>= \input -> succeed (Calendar (Begin "VCALENDAR") (ProdId "-//hacksw/handcal//NONSGML v1.0//EN") (Version "2.0") [] (End "VCALENDAR"))
+parseCalendar = Calendar <$> parseBeginCalendar <*> parseVerProd <*> parseVerProd <*> parseEvent <* symbol (Token (EndToken (End "VEVENT"))) <*> parseEndCalendar
+--parseCalendar = look >>= \input -> trace (show input) $ succeed (Calendar (Begin "VCALENDAR") (ProdId "-//hacksw/handcal//NONSGML v1.0//EN") (Version "2.0") [] (End "VCALENDAR"))
+
+-- testParse :: (a -> StartTokens) -> (String -> a) -> Parser Char a
+-- testParse typeToken typee parser = do 
+--     input <- anySymbol
+--     case input of
+--         Token (typeToken (typee text)) -> return $ typee text
+--         _ -> failp
+
+parseBeginCalendar :: Parser Token Begin
+parseBeginCalendar = do
+    input <- anySymbol
+    case input of
+        Token (BeginToken (Begin text)) -> return $ Begin text
+        _ -> failp
+
+parseVerProd :: Parser Token VerProd
+parseVerProd = do 
+    input <- anySymbol
+    case input of
+        Token (VersionToken (Version string)) -> return $ Vers $ Version string
+        Token (ProdIdToken (ProdId string)) -> return $ Prodid $ ProdId string
+
+parseEndCalendar :: Parser Token End
+parseEndCalendar = do
+    input <- anySymbol
+    case input of
+        Token (EndToken (End text)) -> return $ End text
+        _ -> failp
+
+-- anySymbol totdat laatste endevent
+-- endevent => beginevent moet ie doorgaan
+
+isEndType :: Token -> Bool
+isEndType (Token (EndToken _)) = True
+isEndType _ = False
+
+parseAllEventTokens :: Parser Token [Token]
+parseAllEventTokens = greedy $ satisfy $ not . isEndType
+
+parseEvent :: Parser Token [Event]
+parseEvent = parseAllEventTokens >>= \input -> trace (show input) $ return []
+
+parseBeginEvent :: Parser Token Begin
+parseBeginEvent = undefined
+-- buildCalendar :: Calendar -> [Token] -> Calendar
+
+{- 
+
+token begin vcalendar
+token version 2.0
+token prodid ....
+
+[
+token begin vevent
+
+moet : token dtstamp
+moet : token uid
+moet : token dtstart
+moet : token dtend
+
+mag : token description
+mag : token summary
+mag : token location
+
+
+token end vevent
+]
+
+
+token end vcalendar
+-}
 
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run lexCalendar s >>= run parseCalendar
