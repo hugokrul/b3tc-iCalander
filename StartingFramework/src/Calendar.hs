@@ -264,34 +264,23 @@ parseLocation = anySymbol >>= \input ->
         Token (LocationToken (Location text)) -> return $ LocationProp (Just $ Location text)
         _ -> failp
 
--- gives back a maybe, if it is in the list, a nothing if it is not in a list
--- This comes from the library Data.List but it was not possible to implement it from that, so we copied the source code
--- The link is: https://hackage.haskell.org/package/ghc-internal-9.1001.0/docs/src/GHC.Internal.List.html#%21%3F
-(!?) :: [a] -> Int -> Maybe a
-xs !? n
-    | n < 0 = Nothing
-    | otherwise = foldr (\x r k -> case k of
-                                    0 -> Just x
-                                    _ -> r (k-1)) (const Nothing) xs n
-
 -- The order of the eventprop list is know, It has to contain a datestamp, uid, datestart and date end
 -- The order of the rest of the list (description, summary, location) is also know, it uses the (!?) operator to test if it is there
 eventPropsToEvent :: [EventProp] -> Maybe Event
 eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart : DtEndProp dateEnd : rest) =
     Just $ Event (Begin "VEVENT") dateStamp uid dateStart dateEnd descr summ loc (End "VEVENT")
     where
-        -- description is the first in the list
-        -- rest : [EventProp] so rest !? Int :: EventProp thats why the toDescription functions help
+        -- check if there exists a description in rest
         descr :: Maybe Description
         descr = case map Just (mapMaybe toDescription rest) of
             [] -> Nothing
             (x:_) -> x
-        -- summary is the second
+        -- check if there exists a summary in rest
         summ :: Maybe Summary
         summ = case map Just (mapMaybe toSummary rest) of
             [] -> Nothing
             (x:_) -> x
-        -- location is the third
+        -- check if there exists a location in rest
         loc :: Maybe Location
         loc = case map Just (mapMaybe toLocation rest) of
             [] -> Nothing
