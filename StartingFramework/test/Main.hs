@@ -50,13 +50,6 @@ testEventList = [testEvent2, testEvent1]
 testCalendar :: Calendar
 testCalendar = Calendar (Begin "VCALENDAR") (Prodid (ProdId "-//hacksw/handcal//NONSGML v1.0//EN")) (Vers (Version "2.0")) testEventList (End "VCALENDAR")
 
--- data Calendar = Calendar 
---                         { runCalendarBegin :: Begin
---                         , runCalVerProd1 :: VerProd
---                         , runCalVerProd2 :: VerProd
---                         , runCalEvent :: [Event]
---                         , runCalendarEnd :: End }
-
 main :: IO ()
 main = do
   setNewlineTranslations

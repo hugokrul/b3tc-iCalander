@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda-case" #-}
 module Calendar where
 
 import ParseLib
@@ -6,6 +8,7 @@ import Debug.Trace
 import Data.Maybe
 import Data.List.Split
 import Control.Monad
+import Control.Applicative
 
 
 -- We chose to make every item in the gramar its own data type
@@ -44,6 +47,10 @@ data Event = Event  { runEventBegin :: Begin
                     , runEventEnd :: End }
     deriving (Eq, Ord, Show)
 
+data EventProp = DtStampProp DtStamp | UidProp Uid | DtStartProp DtStart | DtEndProp DtEnd 
+    | DescriptionProp (Maybe Description) | SummaryProp (Maybe Summary) | LocationProp (Maybe Location)
+    deriving (Eq, Ord, Show)
+
 newtype DtStamp = DtStamp { runDtStamp :: DateTime }
     deriving (Eq, Ord, Show)
 
@@ -67,7 +74,7 @@ newtype Location = Location { runLocation :: String}
 
 data StartTokens = BeginToken Begin | EndToken End | ProdIdToken ProdId | VersionToken Version | DtStampToken DtStamp | UidToken Uid
                                     | DtStartToken DtStart | DtEndToken DtEnd | DescriptionToken Description | SummaryToken Summary 
-                                    | LocationToken Location
+                                    | LocationToken Location | No
     deriving (Eq, Ord, Show)
 
 -- Exercise 7
@@ -129,9 +136,7 @@ checkToken (x:xs) = checkToken xs
 
 parseCalendar :: Parser Token Calendar
 -- placeholder, this should put the tokens in the calendar datastructure
-parseCalendar = Calendar <$> parseBeginCalendar <*> parseVerProd <*> parseVerProd <*> parseEvent <* symbol (Token (EndToken (End "VEVENT"))) <*> parseEndCalendar
---parseCalendar = look >>= \input -> trace (show input) $ succeed (Calendar (Begin "VCALENDAR") (ProdId "-//hacksw/handcal//NONSGML v1.0//EN") (Version "2.0") [] (End "VCALENDAR"))
-
+parseCalendar = Calendar <$> parseBegin <*> parseVerProd <*> parseVerProd <*> parseEvents <*> parseEnd
 -- testParse :: (a -> StartTokens) -> (String -> a) -> Parser Char a
 -- testParse typeToken typee parser = do 
 --     input <- anySymbol
@@ -139,8 +144,8 @@ parseCalendar = Calendar <$> parseBeginCalendar <*> parseVerProd <*> parseVerPro
 --         Token (typeToken (typee text)) -> return $ typee text
 --         _ -> failp
 
-parseBeginCalendar :: Parser Token Begin
-parseBeginCalendar = do
+parseBegin :: Parser Token Begin
+parseBegin = do
     input <- anySymbol
     case input of
         Token (BeginToken (Begin text)) -> return $ Begin text
@@ -154,8 +159,8 @@ parseVerProd = do
         Token (ProdIdToken (ProdId string)) -> return $ Prodid $ ProdId string
         _ -> failp
 
-parseEndCalendar :: Parser Token End
-parseEndCalendar = do
+parseEnd :: Parser Token End
+parseEnd = do
     input <- anySymbol
     case input of
         Token (EndToken (End text)) -> return $ End text
@@ -168,14 +173,86 @@ isEndType :: Token -> Bool
 isEndType (Token (EndToken _)) = True
 isEndType _ = False
 
-parseAllEventTokens :: Parser Token [Token]
-parseAllEventTokens = greedy $ satisfy $ not . isEndType 
 
-parseEvent :: Parser Token [Event]
-parseEvent = parseAllEventTokens >>= \input -> trace (show input) $ return []
+parseEvent :: Parser Token Event
+parseEvent = parseBeginEvent *> parseProps <* parseEndEvent
+    
+
+parseProps :: Parser Token Event
+parseProps = eventPropsToEvent <$> many (parseDtStamp 
+                                     <|> parseUid
+                                     <|> parseDtStart 
+                                     <|> parseDtEnd 
+                                     <|> parseSummary
+                                     <|> parseDescription
+                                     <|> parseLocation)
+
+parseDtStamp :: Parser Token EventProp
+parseDtStamp = anySymbol >>= \input -> 
+    case input of
+        Token (DtStampToken (DtStamp date)) -> return $ DtStampProp (DtStamp date)
+        _ -> failp
+
+parseUid :: Parser Token EventProp
+parseUid = anySymbol >>= \input -> 
+    case input of
+        Token (UidToken (Uid text)) -> return $ UidProp (Uid text)
+        _ -> failp
+
+parseDtStart :: Parser Token EventProp
+parseDtStart = anySymbol >>= \input ->
+    case input of
+        Token (DtStartToken (DtStart date)) -> return $ DtStartProp (DtStart date)
+        _ -> failp
+
+parseDtEnd :: Parser Token EventProp
+parseDtEnd = anySymbol >>= \input ->
+    case input of
+        Token (DtEndToken (DtEnd date)) -> return $ DtEndProp (DtEnd date)
+        _ -> failp
+
+parseSummary :: Parser Token EventProp
+parseSummary = anySymbol >>= \input ->
+    case input of
+        Token (SummaryToken (Summary text)) -> return $ SummaryProp (Just $ Summary text)
+        _ -> failp
+
+parseDescription :: Parser Token EventProp
+parseDescription = anySymbol >>= \input ->
+    case input of
+        Token (DescriptionToken (Description text)) -> return $ DescriptionProp (Just $ Description text)
+        _ -> failp
+
+parseLocation :: Parser Token EventProp
+parseLocation = anySymbol >>= \input ->
+    case input of
+        Token (LocationToken (Location text)) -> return $ LocationProp (Just $ Location text)
+        _ -> failp
+
+eventPropsToEvent :: [EventProp] -> Event
+eventPropsToEvent input = trace (show input ++ "\n\n\n") $ Event (Begin "VEVENT") (DtStamp (DateTime (Date (Year 2023) (Month 2) (Day 20)) (Time (Hour 00) (Minute 00) (Second 00)) True)) (Uid "12345@example.com") (DtStart (DateTime (Date (Year 2023) (Month 2) (Day 20)) (Time (Hour 00) (Minute 00) (Second 00)) True)) (DtEnd (DateTime (Date (Year 2023) (Month 2) (Day 21)) (Time (Hour 00) (Minute 01) (Second 00)) True)) Nothing Nothing Nothing (End "VEVENT")
+
+parseEventProps :: Parser Token [EventProp]
+parseEventProps = anySymbol >>= \input -> return []
+
+parseEvents :: Parser Token [Event]
+parseEvents = many parseEvent >>= \input -> return input
+
+parseEndEvent :: Parser Token End
+parseEndEvent = do
+    input <- anySymbol
+    case input of
+        Token (EndToken (End text)) -> if text == "VEVENT" then return $ End text else failp
+        _ -> failp
 
 parseBeginEvent :: Parser Token Begin
-parseBeginEvent = undefined
+parseBeginEvent = do
+    input <- anySymbol
+    case input of
+        Token (BeginToken (Begin text)) -> if text == "VEVENT" then return $ Begin text else failp
+        _ -> failp
+
+
 -- buildCalendar :: Calendar -> [Token] -> Calendar
 
 {- 
