@@ -63,7 +63,7 @@ parseDateTime :: Parser Char DateTime
 parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUTC
 
 parseUTC :: Parser Char Bool
-parseUTC = consume 1 >>= \ls -> if ls == "Z" then return True else return False
+parseUTC = consume 1 <<|> succeed [] >>= \ls -> if ls == "Z" then return True else return False
 
 parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
