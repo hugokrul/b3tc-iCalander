@@ -7,9 +7,12 @@ import Debug.Trace
 
 
 -- Exercise 9
+-- counts all the events in a calendar
 countEvents :: Calendar -> Int
 countEvents (Calendar _ _ _ events _) = length events
 
+-- finds an based on a given datetime
+-- if the datetime is in between other times, it gives back that event
 findEvents :: DateTime -> Calendar -> [Event]
 findEvents searchDate (Calendar _ _ _ events _) = findEvents' searchDate events
 
@@ -38,9 +41,7 @@ findEvents' searchDate@(DateTime (Date (Year searchYear) (Month searchMonth) (Da
         differenceWithFinish :: Integer
         differenceWithFinish = Cal.diffDays dayEnd daySearchDate
 
-
-
-
+-- checks if two devents are overlapping, uses helper functions for readability
 checkOverlapping :: Calendar -> Bool
 checkOverlapping (Calendar _ _ _ events _) = checkOverlappingEvents events
 
@@ -49,6 +50,8 @@ checkOverlappingEvents [] = False
 checkOverlappingEvents [_] = False
 checkOverlappingEvents ((Event _ _ _ _ (DtEnd end1) _ _ _ _):(Event _ _ _ (DtStart start2) _ _ _ _ _):xs) = overlappingDates end1 start2
 
+-- calculates the total time spent in an event based on a given summary
+-- uses helper functions for readability
 timeSpent :: String -> Calendar -> Int
 timeSpent summary (Calendar _ _ _ events _) = timeSpentEvents summary events
 

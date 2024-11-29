@@ -53,6 +53,8 @@ data Event = Event  { runEventBegin :: Begin
                     , runEventEnd :: End }
     deriving (Eq, Ord, Show)
 
+-- the tokens for the events props
+-- this makes sure we can parse all the props into a list, and then put it in the event constructors
 data EventProp = DtStampProp DtStamp | UidProp Uid | DtStartProp DtStart | DtEndProp DtEnd
     | DescriptionProp (Maybe Description) | SummaryProp (Maybe Summary) | LocationProp (Maybe Location)
     deriving (Eq, Ord, Show)
@@ -78,6 +80,7 @@ newtype Summary = Summary { runSummary :: String }
 newtype Location = Location { runLocation :: String}
     deriving (Eq, Ord, Show)
 
+-- all the tokens that can be parsed
 data StartTokens = BeginToken Begin | EndToken End | ProdIdToken ProdId | VersionToken Version | DtStampToken DtStamp | UidToken Uid
                                     | DtStartToken DtStart | DtEndToken DtEnd | DescriptionToken Description | SummaryToken Summary
                                     | LocationToken Location | No
@@ -87,9 +90,12 @@ data StartTokens = BeginToken Begin | EndToken End | ProdIdToken ProdId | Versio
 newtype Token = Token { runToken :: StartTokens }
     deriving (Eq, Ord, Show)
 
+-- consumes a line until it encounters an \n, then does the same to delete the \r
 consumeLine :: Parser Char [Char]
-consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n')) -- >>= \input -> return input
+consumeLine = greedy (satisfy (/= '\r')) <* greedy (satisfy (/= '\n'))
 
+-- makes a list of all the lines to parse, splits them on the :, then combines them again if there is a space at the beginning
+-- then it parses them to tokens
 lexCalendar :: Parser Char [Token]
 lexCalendar = do
     x <- listOf consumeLine (symbol '\n')
@@ -97,14 +103,17 @@ lexCalendar = do
     let result = checkToken (splitIntoTwo $ concatenateListsWithSpaces y)
     return result
 
+-- merges the lists together if there is a space at the beginning
+-- for example: [["Summary", "firstpart ", " second part"], ["description", "No space"]] -> [["Summary", "firstpart secondpart"], ["description", "No space"]]
 splitIntoTwo :: [[String]] -> [[String]]
 splitIntoTwo = map merge
+    where
+        merge :: [String] -> [String]
+        merge input
+            | length input > 2 = head input : [foldr (\x acc -> if head x == ' ' then tail x++acc else x ++ acc) "" $ tail input]
+            | otherwise = input
 
-merge :: [String] -> [String]
-merge input
-    | length input > 2 = head input : [foldr (\x acc -> if head x == ' ' then tail x++acc else x ++ acc) "" $ tail input]
-    | otherwise = input
-
+-- concatenates all the lists that start with a space at the beginning
 concatenateListsWithSpaces :: [[String]] -> [[String]]
 concatenateListsWithSpaces [] = []
 concatenateListsWithSpaces (x:xs) = go x xs
@@ -118,7 +127,7 @@ concatenateListsWithSpaces (x:xs) = go x xs
     startsWithSpace (c:_) = c == ' '
     startsWithSpace _ = False
 
--- TODO: check if token has a space and only one character, then it needs to be concatenated with the token in front
+-- parses the strings to tokens, skips it if it is not possible
 checkToken :: [[String]] -> [Token]
 checkToken [] = []
 checkToken [[]] = []
@@ -137,26 +146,23 @@ checkToken ([token, text]:xs) = case token of
     _               -> checkToken xs
     where
         date :: String -> DateTime
-        date input = fromJust (run parseDateTime input)
+        date input = fromMaybe failDate (run parseDateTime input)
 checkToken (x:xs) = checkToken xs
 
-parseCalendar :: Parser Token Calendar
--- placeholder, this should put the tokens in the calendar datastructure
-parseCalendar = Calendar <$> parseBegin <*> parseVerProd <*> parseVerProd <*> parseEvents <*> parseEnd
--- testParse :: (a -> StartTokens) -> (String -> a) -> Parser Char a
--- testParse typeToken typee parser = do 
---     input <- anySymbol
---     case input of
---         Token (typeToken (typee text)) -> return $ typee text
---         _ -> failp
 
-parseBegin :: Parser Token Begin
-parseBegin = do
+parseCalendar :: Parser Token Calendar
+parseCalendar = Calendar <$> parseBegin "VCALENDAR" <*> parseVerProd <*> parseVerProd <*> parseEvents <*> parseEnd "VCALENDAR"
+
+-- parses the begin token to a begin datatype, fails if it is not possible
+parseBegin :: String -> Parser Token Begin
+parseBegin typeOfBegin = do
     input <- anySymbol
     case input of
-        Token (BeginToken (Begin text)) -> return $ Begin text
+        Token (BeginToken (Begin text)) -> if text == typeOfBegin then return $ Begin text else failp
         _ -> failp
 
+-- parses the version and prodId
+-- they are in the same datatype so that the order in which they are found does not matter
 parseVerProd :: Parser Token VerProd
 parseVerProd = do
     input <- anySymbol
@@ -165,95 +171,107 @@ parseVerProd = do
         Token (ProdIdToken (ProdId string)) -> return $ Prodid $ ProdId string
         _ -> failp
 
-parseEnd :: Parser Token End
-parseEnd = do
+-- parses the end token to an end datatype
+parseEnd :: String -> Parser Token End
+parseEnd typeOfEnd = do
     input <- anySymbol
     case input of
-        Token (EndToken (End text)) -> return $ End text
+        Token (EndToken (End text)) -> if text == typeOfEnd then return $ End text else failp
         _ -> failp
 
 -- anySymbol totdat laatste endevent
 -- endevent => beginevent moet ie doorgaan
 
+-- checks if a token is of an end type
 isEndType :: Token -> Bool
 isEndType (Token (EndToken _)) = True
 isEndType _ = False
 
-
+-- parses one event
 parseEvent :: Parser Token Event
-parseEvent = parseBeginEvent *> parseProps <* parseEndEvent
+parseEvent = parseBegin "VEVENT" *> parseProps <* parseEnd "VEVENT"
 
 
-parseProps :: Parser Token Event
 -- with many1 we make sure there is at least 1 prop in the list
 -- sort makes sure it is the same order always. i.e., DtStamp, Uid, DtStart, DtEnd, Description, Summary, Location
-parseProps = eventPropsToEvent . sort <$> many1 (parseDtStamp
+parseProps :: Parser Token Event
+parseProps = many1 (parseDtStamp
                                      <|> parseUid
                                      <|> parseDtStart
                                      <|> parseDtEnd
                                      <|> parseSummary
                                      <|> parseDescription
-                                     <|> parseLocation)
+                                     <|> parseLocation) >>= maybe failp return . eventPropsToEvent . sort
 
+-- parses a dateStamp fails if it can't parse
 parseDtStamp :: Parser Token EventProp
 parseDtStamp = anySymbol >>= \input ->
     case input of
-        Token (DtStampToken (DtStamp date)) -> return $ DtStampProp (DtStamp date)
+        Token (DtStampToken (DtStamp date)) -> if date == failDate then failp else return $ DtStampProp (DtStamp date)
         _ -> failp
 
+-- parses an uid fails if it can't parse
 parseUid :: Parser Token EventProp
 parseUid = anySymbol >>= \input ->
     case input of
         Token (UidToken (Uid text)) -> return $ UidProp (Uid text)
         _ -> failp
 
+-- parses a dateStart fails if it can't parse
 parseDtStart :: Parser Token EventProp
 parseDtStart = anySymbol >>= \input ->
     case input of
-        Token (DtStartToken (DtStart date)) -> return $ DtStartProp (DtStart date)
+        Token (DtStartToken (DtStart date)) -> if date == failDate then failp else return $ DtStartProp (DtStart date)
         _ -> failp
 
+-- parses a dateEnd fails if it can't parse
 parseDtEnd :: Parser Token EventProp
 parseDtEnd = anySymbol >>= \input ->
     case input of
-        Token (DtEndToken (DtEnd date)) -> return $ DtEndProp (DtEnd date)
+        Token (DtEndToken (DtEnd date)) -> if date == failDate then failp else return $ DtEndProp (DtEnd date)
         _ -> failp
 
+-- parses a Summary fails if it can't parse
 parseSummary :: Parser Token EventProp
 parseSummary = anySymbol >>= \input ->
     case input of
         Token (SummaryToken (Summary text)) -> return $ SummaryProp (Just $ Summary text)
         _ -> failp
 
+-- parses a Description fails if it can't parse
 parseDescription :: Parser Token EventProp
 parseDescription = anySymbol >>= \input ->
     case input of
         Token (DescriptionToken (Description text)) -> return $ DescriptionProp (Just $ Description text)
         _ -> failp
 
+-- parses a Location fails if it can't parse
 parseLocation :: Parser Token EventProp
 parseLocation = anySymbol >>= \input ->
     case input of
         Token (LocationToken (Location text)) -> return $ LocationProp (Just $ Location text)
         _ -> failp
 
+-- gives back a maybe, if it is in the list, a nothing if it is not in a list
 (!?) :: [a] -> Int -> Maybe a
 xs !? n
     | n < 0 = Nothing
-    | otherwise = foldr (\x r k -> case k of 
+    | otherwise = foldr (\x r k -> case k of
                                     0 -> Just x
                                     _ -> r (k-1)) (const Nothing) xs n
 
-eventPropsToEvent :: [EventProp] -> Event
-eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart : DtEndProp dateEnd : rest) = 
-    Event (Begin "VEVENT") dateStamp uid dateStart dateEnd descr summ loc (End "VEVENT")
+-- The order of the eventprop list is know, It has to contain a datestamp, uid, datestart and date end
+-- The order of the rest of the list (description, summary, location) is also know, it uses the (!?) operator to test if it is there
+eventPropsToEvent :: [EventProp] -> Maybe Event
+eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart : DtEndProp dateEnd : rest) =
+    Just $ Event (Begin "VEVENT") dateStamp uid dateStart dateEnd descr summ loc (End "VEVENT")
     where
         descr :: Maybe Description
         descr = toDescription $ rest !? 0
         summ :: Maybe Summary
-        summ = toSummary $ rest !? 0
+        summ = toSummary $ rest !? 1
         loc :: Maybe Location
-        loc = toLocation $ rest !? 0
+        loc = toLocation $ rest !? 2
 
         toDescription :: Maybe EventProp -> Maybe Description
         toDescription Nothing = Nothing
@@ -269,30 +287,20 @@ eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart :
         toLocation Nothing = Nothing
         toLocation (Just (LocationProp location)) = location
         toLocation _ = Nothing
+eventPropsToEvent _ = Nothing
 
+-- parses at least one event
 parseEvents :: Parser Token [Event]
-parseEvents = many parseEvent >>= \input -> return input
+parseEvents = many1 parseEvent >>= \input -> return input
 
-parseEndEvent :: Parser Token End
-parseEndEvent = do
-    input <- anySymbol
-    case input of
-        Token (EndToken (End text)) -> if text == "VEVENT" then return $ End text else failp
-        _ -> failp
-
-parseBeginEvent :: Parser Token Begin
-parseBeginEvent = do
-    input <- anySymbol
-    case input of
-        Token (BeginToken (Begin text)) -> if text == "VEVENT" then return $ Begin text else failp
-        _ -> failp
-
+-- first lexes the calendar, then parses it
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run lexCalendar s >>= run parseCalendar
 
 -- Exercise 8
+-- pretty prints the calendar
 printCalendar :: Calendar -> String
-printCalendar (Calendar (Begin calBegin) verprod1 verprod2 events (End calEnd)) = 
+printCalendar (Calendar (Begin calBegin) verprod1 verprod2 events (End calEnd)) =
     "BEGIN:" ++ calBegin
     ++ '\n':
     case verprod1 of

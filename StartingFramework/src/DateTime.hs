@@ -45,6 +45,9 @@ newtype Hour   = Hour   { runHour   :: Int } deriving (Eq, Ord)
 newtype Minute = Minute { runMinute :: Int } deriving (Eq, Ord)
 newtype Second = Second { runSecond :: Int } deriving (Eq, Ord)
 
+failDate :: DateTime
+failDate = DateTime (Date (Year 0000) (Month 00) (Day 00)) (Time (Hour 00) (Minute 00) (Second 00)) True
+
 checkAllDigits :: String -> Bool
 checkAllDigits = all isDigit
 
