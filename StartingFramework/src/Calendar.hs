@@ -7,6 +7,7 @@ import DateTime
 import Debug.Trace
 import Data.Maybe
 import Data.List.Split
+import Data.List
 import Control.Monad
 import Control.Applicative
 
@@ -14,13 +15,16 @@ import Control.Applicative
 -- We chose to make every item in the gramar its own data type
 -- We would rather filter for non-correct calendars then to parse the callenders
 -- Exercise 6
-data Calendar = Calendar 
+data Calendar = Calendar
                         { runCalendarBegin :: Begin
                         , runCalVerProd1 :: VerProd
                         , runCalVerProd2 :: VerProd
                         , runCalEvent :: [Event]
                         , runCalendarEnd :: End }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
+
+instance Show Calendar where
+    show = printCalendar
 
 newtype Begin = Begin { runBegin :: String }
     deriving (Eq, Ord, Show)
@@ -34,7 +38,9 @@ newtype ProdId = ProdId { runProdId :: String }
     deriving (Eq, Ord, Show)
 
 newtype Version = Version { runVersionNumber :: String}
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
+
+instance Show Version where show = const "VERSION:2.0"
 
 data Event = Event  { runEventBegin :: Begin
                     , runEventDtStamp :: DtStamp
@@ -47,7 +53,7 @@ data Event = Event  { runEventBegin :: Begin
                     , runEventEnd :: End }
     deriving (Eq, Ord, Show)
 
-data EventProp = DtStampProp DtStamp | UidProp Uid | DtStartProp DtStart | DtEndProp DtEnd 
+data EventProp = DtStampProp DtStamp | UidProp Uid | DtStartProp DtStart | DtEndProp DtEnd
     | DescriptionProp (Maybe Description) | SummaryProp (Maybe Summary) | LocationProp (Maybe Location)
     deriving (Eq, Ord, Show)
 
@@ -73,7 +79,7 @@ newtype Location = Location { runLocation :: String}
     deriving (Eq, Ord, Show)
 
 data StartTokens = BeginToken Begin | EndToken End | ProdIdToken ProdId | VersionToken Version | DtStampToken DtStamp | UidToken Uid
-                                    | DtStartToken DtStart | DtEndToken DtEnd | DescriptionToken Description | SummaryToken Summary 
+                                    | DtStartToken DtStart | DtEndToken DtEnd | DescriptionToken Description | SummaryToken Summary
                                     | LocationToken Location | No
     deriving (Eq, Ord, Show)
 
@@ -152,7 +158,7 @@ parseBegin = do
         _ -> failp
 
 parseVerProd :: Parser Token VerProd
-parseVerProd = do 
+parseVerProd = do
     input <- anySymbol
     case input of
         Token (VersionToken (Version string)) -> return $ Vers $ Version string
@@ -176,25 +182,27 @@ isEndType _ = False
 
 parseEvent :: Parser Token Event
 parseEvent = parseBeginEvent *> parseProps <* parseEndEvent
-    
+
 
 parseProps :: Parser Token Event
-parseProps = eventPropsToEvent <$> many (parseDtStamp 
+-- with many1 we make sure there is at least 1 prop in the list
+-- sort makes sure it is the same order always. i.e., DtStamp, Uid, DtStart, DtEnd, Description, Summary, Location
+parseProps = eventPropsToEvent . sort <$> many1 (parseDtStamp
                                      <|> parseUid
-                                     <|> parseDtStart 
-                                     <|> parseDtEnd 
+                                     <|> parseDtStart
+                                     <|> parseDtEnd
                                      <|> parseSummary
                                      <|> parseDescription
                                      <|> parseLocation)
 
 parseDtStamp :: Parser Token EventProp
-parseDtStamp = anySymbol >>= \input -> 
+parseDtStamp = anySymbol >>= \input ->
     case input of
         Token (DtStampToken (DtStamp date)) -> return $ DtStampProp (DtStamp date)
         _ -> failp
 
 parseUid :: Parser Token EventProp
-parseUid = anySymbol >>= \input -> 
+parseUid = anySymbol >>= \input ->
     case input of
         Token (UidToken (Uid text)) -> return $ UidProp (Uid text)
         _ -> failp
@@ -229,11 +237,38 @@ parseLocation = anySymbol >>= \input ->
         Token (LocationToken (Location text)) -> return $ LocationProp (Just $ Location text)
         _ -> failp
 
-eventPropsToEvent :: [EventProp] -> Event
-eventPropsToEvent input = trace (show input ++ "\n\n\n") $ Event (Begin "VEVENT") (DtStamp (DateTime (Date (Year 2023) (Month 2) (Day 20)) (Time (Hour 00) (Minute 00) (Second 00)) True)) (Uid "12345@example.com") (DtStart (DateTime (Date (Year 2023) (Month 2) (Day 20)) (Time (Hour 00) (Minute 00) (Second 00)) True)) (DtEnd (DateTime (Date (Year 2023) (Month 2) (Day 21)) (Time (Hour 00) (Minute 01) (Second 00)) True)) Nothing Nothing Nothing (End "VEVENT")
+(!?) :: [a] -> Int -> Maybe a
+xs !? n
+    | n < 0 = Nothing
+    | otherwise = foldr (\x r k -> case k of 
+                                    0 -> Just x
+                                    _ -> r (k-1)) (const Nothing) xs n
 
-parseEventProps :: Parser Token [EventProp]
-parseEventProps = anySymbol >>= \input -> return []
+eventPropsToEvent :: [EventProp] -> Event
+eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart : DtEndProp dateEnd : rest) = 
+    Event (Begin "VEVENT") dateStamp uid dateStart dateEnd descr summ loc (End "VEVENT")
+    where
+        descr :: Maybe Description
+        descr = toDescription $ rest !? 0
+        summ :: Maybe Summary
+        summ = toSummary $ rest !? 0
+        loc :: Maybe Location
+        loc = toLocation $ rest !? 0
+
+        toDescription :: Maybe EventProp -> Maybe Description
+        toDescription Nothing = Nothing
+        toDescription (Just (DescriptionProp description)) = description
+        toDescription _ = Nothing
+
+        toSummary :: Maybe EventProp -> Maybe Summary
+        toSummary Nothing = Nothing
+        toSummary (Just (SummaryProp summary)) = summary
+        toSummary _ = Nothing
+
+        toLocation :: Maybe EventProp -> Maybe Location
+        toLocation Nothing = Nothing
+        toLocation (Just (LocationProp location)) = location
+        toLocation _ = Nothing
 
 parseEvents :: Parser Token [Event]
 parseEvents = many parseEvent >>= \input -> return input
@@ -252,38 +287,51 @@ parseBeginEvent = do
         Token (BeginToken (Begin text)) -> if text == "VEVENT" then return $ Begin text else failp
         _ -> failp
 
-
--- buildCalendar :: Calendar -> [Token] -> Calendar
-
-{- 
-
-token begin vcalendar
-token version 2.0
-token prodid ....
-
-[
-token begin vevent
-
-moet : token dtstamp
-moet : token uid
-moet : token dtstart
-moet : token dtend
-
-mag : token description
-mag : token summary
-mag : token location
-
-
-token end vevent
-]
-
-
-token end vcalendar
--}
-
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run lexCalendar s >>= run parseCalendar
 
 -- Exercise 8
 printCalendar :: Calendar -> String
-printCalendar = undefined
+printCalendar (Calendar (Begin calBegin) verprod1 verprod2 events (End calEnd)) = 
+    "BEGIN:" ++ calBegin
+    ++ '\n':
+    case verprod1 of
+        Vers (Version version) -> "VERSION:" ++ show version
+        Prodid (ProdId prodid) -> "PRODID:" ++ prodid
+    ++ '\n':
+    case verprod2 of
+        Vers (Version version) -> "VERSION:" ++ show version
+        Prodid (ProdId prodid) -> "PRODID:" ++ prodid
+    ++ '\n':
+    printEvents events
+    ++ '\n':
+    "END:" ++ calEnd
+
+printEvents :: [Event] -> String
+printEvents = foldr f ""
+    where
+        f x y = printEvent x ++ "\n" ++ y
+
+printEvent :: Event -> String
+printEvent (Event (Begin evBegin) (DtStamp dtstamp) (Uid uid) (DtStart dtstart) (DtEnd dtend) maybeDesc maybeSum maybeLoc (End evEnd)) =
+    "\n" ++
+    "BEGIN:" ++ show evBegin
+    ++ "\n" ++
+    "DTSTAMP:" ++ show dtstamp
+    ++ '\n':
+    "UID:" ++ show uid
+    ++ '\n':
+    "DTSTART:" ++ show dtstart
+    ++ '\n':
+    "DTEND:" ++ show dtend
+    ++ "\n"++
+    (case maybeDesc of
+        Just (Description desc) -> "DESCRIPTION:" ++ show desc ++ "\n"
+        Nothing -> "") ++
+    (case maybeSum of
+        Just (Summary sum) -> "SUMMARY:" ++ show sum ++ "\n"
+        Nothing -> "") ++
+    (case maybeLoc of
+        Just (Location loc) -> "LOCATION:" ++ show loc ++ "\n"
+        Nothing -> "")
+    ++ "END:" ++ evEnd
