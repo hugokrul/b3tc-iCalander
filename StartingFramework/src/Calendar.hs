@@ -113,7 +113,7 @@ splitIntoTwo = map merge
     where
         merge :: [String] -> [String]
         merge input
-            | length input > 2 = head input : [foldr (\x acc -> if head x == ' ' then tail x++acc else x ++ acc) "" $ tail input]
+            | length input > 2 = head input : [foldr (\x acc -> if null x then x ++ acc else if head x == ' ' then tail x++acc else x ++ acc) "" $ tail input]
             | otherwise = input
 
 -- concatenates all the lists that start with a space at the beginning
@@ -283,34 +283,35 @@ eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart :
         -- description is the first in the list
         -- rest : [EventProp] so rest !? Int :: EventProp thats why the toDescription functions help
         descr :: Maybe Description
-        descr = toDescription $ rest !? 0
+        descr = case map Just (mapMaybe toDescription rest) of
+            [] -> Nothing
+            (x:_) -> x
         -- summary is the second
         summ :: Maybe Summary
-        summ = toSummary $ rest !? 1
+        summ = case map Just (mapMaybe toSummary rest) of
+            [] -> Nothing
+            (x:_) -> x
         -- location is the third
         loc :: Maybe Location
-        loc = toLocation $ rest !? 2
+        loc = case map Just (mapMaybe toLocation rest) of
+            [] -> Nothing
+            (x:_) -> x
 
-        toDescription :: Maybe EventProp -> Maybe Description
-        toDescription Nothing = Nothing
-        toDescription (Just (DescriptionProp description)) = description
-        toDescription _ = Nothing
-
-        toSummary :: Maybe EventProp -> Maybe Summary
-        toSummary Nothing = Nothing
-        toSummary (Just (SummaryProp summary)) = summary
+        toSummary :: EventProp -> Maybe Summary
+        toSummary (SummaryProp summary) = summary
         toSummary _ = Nothing
-
-        toLocation :: Maybe EventProp -> Maybe Location
-        toLocation Nothing = Nothing
-        toLocation (Just (LocationProp location)) = location
+        toDescription :: EventProp -> Maybe Description
+        toDescription (DescriptionProp description) = description
+        toDescription _ = Nothing
+        toLocation :: EventProp -> Maybe Location
+        toLocation (LocationProp location) = location
         toLocation _ = Nothing
 -- if one of the required EventProps is missing, the parser should fail
 eventPropsToEvent _ = Nothing
 
 -- parses at least one event
 parseEvents :: Parser Token [Event]
-parseEvents = many1 parseEvent >>= \input -> return input
+parseEvents = many1 parseEvent
 
 -- first lexes the calendar, then parses it
 recognizeCalendar :: String -> Maybe Calendar
@@ -321,46 +322,45 @@ recognizeCalendar s = run lexCalendar s >>= run parseCalendar
 printCalendar :: Calendar -> String
 printCalendar (Calendar (Begin calBegin) verprod1 verprod2 events (End calEnd)) =
     "BEGIN:" ++ calBegin
-    ++ '\n':
+    ++ "\r\n" ++
     case verprod1 of
-        Vers (Version version) -> "VERSION:" ++ show version
+        Vers (Version version) -> "VERSION:" ++ version
         Prodid (ProdId prodid) -> "PRODID:" ++ prodid
-    ++ '\n':
+    ++ "\r\n" ++
     case verprod2 of
-        Vers (Version version) -> "VERSION:" ++ show version
+        Vers (Version version) -> "VERSION:" ++ version
         Prodid (ProdId prodid) -> "PRODID:" ++ prodid
-    ++ '\n':
+    ++ "\r\n" ++
     printEvents events
-    ++ '\n':
+    ++
     "END:" ++ calEnd
 
 -- pretty prints all the events by recursivly calling printEvent with a newline
 printEvents :: [Event] -> String
 printEvents = foldr f ""
     where
-        f x y = printEvent x ++ "\n" ++ y
+        f x y = printEvent x ++ "\r\n" ++ y
 
 -- pretty prints one event
 printEvent :: Event -> String
 printEvent (Event (Begin evBegin) (DtStamp dtstamp) (Uid uid) (DtStart dtstart) (DtEnd dtend) maybeDesc maybeSum maybeLoc (End evEnd)) =
-    "\n" ++
-    "BEGIN:" ++ show evBegin
-    ++ "\n" ++
+    "BEGIN:" ++ evBegin
+    ++ "\r\n" ++
     "DTSTAMP:" ++ show dtstamp
-    ++ '\n':
-    "UID:" ++ show uid
-    ++ '\n':
+    ++ "\r\n" ++
+    "UID:" ++ uid
+    ++ "\r\n" ++
     "DTSTART:" ++ show dtstart
-    ++ '\n':
+    ++ "\r\n" ++
     "DTEND:" ++ show dtend
-    ++ "\n"++
+    ++ "\r\n" ++
     (case maybeDesc of
-        Just (Description desc) -> "DESCRIPTION:" ++ show desc ++ "\n"
+        Just (Description desc) -> "DESCRIPTION:" ++ show desc ++ "\r\n"
         Nothing -> "") ++
     (case maybeSum of
-        Just (Summary sum) -> "SUMMARY:" ++ show sum ++ "\n"
+        Just (Summary sum) -> "SUMMARY:" ++ show sum ++ "\r\n"
         Nothing -> "") ++
     (case maybeLoc of
-        Just (Location loc) -> "LOCATION:" ++ show loc ++ "\n"
+        Just (Location loc) -> "LOCATION:" ++ show loc ++ "\r\n"
         Nothing -> "")
     ++ "END:" ++ evEnd
