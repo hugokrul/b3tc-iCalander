@@ -13,12 +13,14 @@ import Control.Applicative
 
 
 -- We chose to make every item in the gramar its own data type
--- We would rather filter for non-correct calendars then to parse the callenders
+-- We would rather filter for non-correct calendars then to parse the calenders
 -- Exercise 6
 data Calendar = Calendar
                         { runCalendarBegin :: Begin
-                        , runCalVerProd1 :: VerProd
-                        , runCalVerProd2 :: VerProd
+                        -- we used verprod to make sure the order in which the parser finds the version or prodid is not important
+                        , runCalVersion :: VerProd
+                        , runCalProdId :: VerProd
+                        -- we checked if there was a minimum of 1 event in the parser using many1
                         , runCalEvent :: [Event]
                         , runCalendarEnd :: End }
     deriving (Eq, Ord)
@@ -47,6 +49,7 @@ data Event = Event  { runEventBegin :: Begin
                     , runEventUid :: Uid
                     , runEventDtStart :: DtStart
                     , runEventDtEnd :: DtEnd
+                    -- we used Maybe to indicate it is not required
                     , runEventDescription :: Maybe Description
                     , runEventSummary :: Maybe Summary
                     , runEventLocation :: Maybe Location
@@ -146,7 +149,12 @@ checkToken ([token, text]:xs) = case token of
     _               -> checkToken xs
     where
         date :: String -> DateTime
-        date input = fromMaybe failDate (run parseDateTime input)
+        -- checks on if the date is an illegal date or not
+        date input = if checkDateTime parsedDate then parsedDate else failDate
+            where
+                -- if the parseDateTime fails, it gives back an illegal date so the parser can fail
+                parsedDate = fromMaybe failDate (run parseDateTime input)
+-- if it fails, it skips the token.
 checkToken (x:xs) = checkToken xs
 
 
@@ -196,17 +204,21 @@ parseEvent = parseBegin "VEVENT" *> parseProps <* parseEnd "VEVENT"
 -- sort makes sure it is the same order always. i.e., DtStamp, Uid, DtStart, DtEnd, Description, Summary, Location
 parseProps :: Parser Token Event
 parseProps = many1 (parseDtStamp
-                                     <|> parseUid
-                                     <|> parseDtStart
-                                     <|> parseDtEnd
-                                     <|> parseSummary
-                                     <|> parseDescription
-                                     <|> parseLocation) >>= maybe failp return . eventPropsToEvent . sort
+                <|> parseUid
+                <|> parseDtStart
+                <|> parseDtEnd
+                <|> parseSummary
+                <|> parseDescription
+                -- this looks if eventProps is returned correctly, if it gives back Nothing one of the required eventProps is missing
+                -- if eventPropsToEvent gives back nothing, it calls failp
+                <|> parseLocation) >>= maybe failp return . eventPropsToEvent . sort
 
 -- parses a dateStamp fails if it can't parse
 parseDtStamp :: Parser Token EventProp
 parseDtStamp = anySymbol >>= \input ->
     case input of
+        -- failDate is called when run parseDateTime fails
+        -- it should then fail the parser because one of the required dates is missing
         Token (DtStampToken (DtStamp date)) -> if date == failDate then failp else return $ DtStampProp (DtStamp date)
         _ -> failp
 
@@ -253,6 +265,8 @@ parseLocation = anySymbol >>= \input ->
         _ -> failp
 
 -- gives back a maybe, if it is in the list, a nothing if it is not in a list
+-- This comes from the library Data.List but it was not possible to implement it from that, so we copied the source code
+-- The link is: https://hackage.haskell.org/package/ghc-internal-9.1001.0/docs/src/GHC.Internal.List.html#%21%3F
 (!?) :: [a] -> Int -> Maybe a
 xs !? n
     | n < 0 = Nothing
@@ -266,10 +280,14 @@ eventPropsToEvent :: [EventProp] -> Maybe Event
 eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart : DtEndProp dateEnd : rest) =
     Just $ Event (Begin "VEVENT") dateStamp uid dateStart dateEnd descr summ loc (End "VEVENT")
     where
+        -- description is the first in the list
+        -- rest : [EventProp] so rest !? Int :: EventProp thats why the toDescription functions help
         descr :: Maybe Description
         descr = toDescription $ rest !? 0
+        -- summary is the second
         summ :: Maybe Summary
         summ = toSummary $ rest !? 1
+        -- location is the third
         loc :: Maybe Location
         loc = toLocation $ rest !? 2
 
@@ -287,6 +305,7 @@ eventPropsToEvent (DtStampProp dateStamp : UidProp uid : DtStartProp dateStart :
         toLocation Nothing = Nothing
         toLocation (Just (LocationProp location)) = location
         toLocation _ = Nothing
+-- if one of the required EventProps is missing, the parser should fail
 eventPropsToEvent _ = Nothing
 
 -- parses at least one event
@@ -315,11 +334,13 @@ printCalendar (Calendar (Begin calBegin) verprod1 verprod2 events (End calEnd)) 
     ++ '\n':
     "END:" ++ calEnd
 
+-- pretty prints all the events by recursivly calling printEvent with a newline
 printEvents :: [Event] -> String
 printEvents = foldr f ""
     where
         f x y = printEvent x ++ "\n" ++ y
 
+-- pretty prints one event
 printEvent :: Event -> String
 printEvent (Event (Begin evBegin) (DtStamp dtstamp) (Uid uid) (DtStart dtstart) (DtEnd dtend) maybeDesc maybeSum maybeLoc (End evEnd)) =
     "\n" ++

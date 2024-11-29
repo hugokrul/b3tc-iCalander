@@ -93,13 +93,12 @@ parseSecond :: Parser Char Second
 parseSecond = consumeParse 2 Second
 
 -- Exercise 2
+-- runs the parser until the first result comes up that has no rest, or until there is only one result left
 run :: (Show a, Show b) => Parser a b -> [a] -> Maybe b
--- parse :: Parser s a -> [s] -> [(a, [s])]
--- parse :: Parser String DateTime -> String -> [(DateTime, String)]
 run parser input =
     case parse parser input of
         [] -> Nothing
-        [(result, rest)] -> Just result
+        [(result, _)] -> Just result
         (result, []):xs -> Just result
         (result, t):xs -> run parser t
 
@@ -121,6 +120,8 @@ parsePrint :: [Char] -> Maybe String
 parsePrint s = printDateTime <$> run parseDateTime s
 
 -- Exercise 5
+-- checks if the date is in a correct format
+-- we use the Data.Calendar library to check for leapyears and if the days are not bigger then the days in a month
 checkDateTime :: DateTime -> Bool
 checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Time (Hour hour) (Minute minute) (Second second)) utc) =
     if Cal.isLeapYear $ toInteger yearInt
@@ -132,6 +133,8 @@ checkDateTime (DateTime (Date (Year yearInt) (Month monthInt) (Day dayInt)) (Tim
             hour < 24 && minute < 60 && second < 60
 
 -- Functions for the Calendar
+-- checks if the second datetime comes before the first datetime
+-- in events this is used like overlappingDates EndDateEvent1 StartDateEvent2 to see if they are overlapping
 overlappingDates :: DateTime -> DateTime -> Bool
 overlappingDates 
     (DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour12) (Minute minute12) (Second second12)) utc12) 
@@ -151,6 +154,8 @@ overlappingDates
         overlappingTime :: Bool
         overlappingTime = if hour12 == hour21 then (if minute12 == minute21 then second21 < second12 else minute21 < minute12) else hour21 < hour12
 
+-- counts the amount of minutes between two days
+-- uses Data.Calendar to calculate the difference in days
 countMinutes :: DateTime -> DateTime -> Int
 countMinutes (DateTime (Date (Year year11) (Month month11) (Day day11)) (Time (Hour hour1) (Minute minute1) (Second second1)) utc11)
     (DateTime (Date (Year year12) (Month month12) (Day day12)) (Time (Hour hour2) (Minute minute2) (Second second2)) utc12)  = minutes

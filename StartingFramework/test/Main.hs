@@ -23,33 +23,6 @@ instance Show Result where
     show (Invalid _) = "good syntax, but invalid date or time values"
     show (Valid x)   = "valid date: " ++ show x
 
-testDate1Start :: DateTime
-testDate1Start = DateTime (Date (Year 2023) (Month 2) (Day 20)) (Time (Hour 00) (Minute 00) (Second 00)) True
-testDate1Finish :: DateTime
-testDate1Finish = DateTime (Date (Year 2023) (Month 2) (Day 21)) (Time (Hour 00) (Minute 01) (Second 00)) True
-
-testDate2Start :: DateTime
-testDate2Start = DateTime (Date (Year 2023) (Month 2) (Day 21)) (Time (Hour 00) (Minute 00) (Second 00)) True
-testDate2Finish :: DateTime
-testDate2Finish = DateTime (Date (Year 2023) (Month 2) (Day 26)) (Time (Hour 00) (Minute 00) (Second 00)) True
-
-testDate3Start :: DateTime
-testDate3Start = DateTime (Date (Year 2023) (Month 2) (Day 22)) (Time (Hour 00) (Minute 0) (Second 00)) True
-testDate3Finish :: DateTime
-testDate3Finish = DateTime (Date (Year 2023) (Month 2) (Day 25)) (Time (Hour 00) (Minute 00) (Second 00)) True
-
-testEvent1 :: Event
-testEvent1 = Event (Begin "VEVENT") (DtStamp testDate1Start) (Uid "12345@example.com") (DtStart testDate1Start) (DtEnd testDate1Finish) Nothing (Just (Summary "test")) Nothing (End "VEVENT")
-
-testEvent2 :: Event
-testEvent2 = Event (Begin "VEVENT") (DtStamp testDate1Start) (Uid "12345@example.com") (DtStart testDate2Start) (DtEnd testDate2Finish) Nothing Nothing Nothing (End "VEVENT")
-
-testEventList :: [Event]
-testEventList = [testEvent2, testEvent1]
-
-testCalendar :: Calendar
-testCalendar = Calendar (Begin "VCALENDAR") (Prodid (ProdId "-//hacksw/handcal//NONSGML v1.0//EN")) (Vers (Version "2.0")) testEventList (End "VCALENDAR")
-
 main :: IO ()
 main = do
   setNewlineTranslations
