@@ -92,7 +92,7 @@ parseMinute = consumeParse 2 Minute
 parseSecond :: Parser Char Second
 parseSecond = consumeParse 2 Second
 
--- Exercise 2 
+-- Exercise 2  
 -- runs the parser until the first result comes up that has no rest, or until there is only one result left
 run :: (Show a, Show b) => Parser a b -> [a] -> Maybe b
 run parser input =
